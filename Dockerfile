@@ -91,7 +91,7 @@ ENV CI true
 # --------------------------------------------------
 ENV PYTHONUNBUFFERED=1
 
-RUN export PYENV_ROOT=/opt/.pyenv; \
+RUN export PYENV_ROOT=/home/${NON_ROOT_USER}/.pyenv; \
     export PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}";\
     export PYTHON_CONFIGURE_OPTS="--enable-shared"; \
     curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash && \
