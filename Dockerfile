@@ -91,10 +91,13 @@ ENV CI true
 # --------------------------------------------------
 ENV PYTHONUNBUFFERED=1
 
-RUN export PYENV_ROOT=/opt/.pyenv; export PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}" export PYTHON_CONFIGURE_OPTS="--enable-shared" bash -c "curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash && \
+RUN export PYENV_ROOT=/opt/.pyenv; \
+    export PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}";\
+    export PYTHON_CONFIGURE_OPTS="--enable-shared"; \
+    curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash && \
     git clone https://github.com/jawshooah/pyenv-default-packages ${PYENV_ROOT}/plugins/pyenv-default-packages && \
-    find ${PYENV_ROOT} -name \"*.tmp\" -exec rm {} \; && \
-    find ${PYENV_ROOT} -type d -name \".git\" -prune -exec rm -rf {} \;"
+    find ${PYENV_ROOT} -name "*.tmp" -exec rm {} \; && \
+    find ${PYENV_ROOT} -type d -name ".git" -prune -exec rm -rf {} \;
 
 RUN PYTHONDONTWRITEBYTECODE=true pyenv install 3.6.5 && pyenv shell 3.6.5; pip3 install --no-cache-dir tox && \
     pyenv rehash
