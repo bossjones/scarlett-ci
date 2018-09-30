@@ -100,7 +100,9 @@ RUN curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/p
     find ${PYENV_ROOT} -name "*.tmp" -exec rm {} \; && \
     find ${PYENV_ROOT} -type d -name ".git" -prune -exec rm -rf {} \;
 
-RUN PYTHONDONTWRITEBYTECODE=true pyenv install 3.6.5 && pyenv global 3.6.5; pip3 install --no-cache-dir tox && \
+RUN PYTHONDONTWRITEBYTECODE=true pyenv install 3.6.5 && pyenv global 3.6.5
+
+RUN pip3 install --no-cache-dir tox && \
     pyenv rehash
 
 # COPY requirements.txt requirements.txt
