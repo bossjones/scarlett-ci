@@ -117,6 +117,8 @@ RUN pip3 install --no-cache-dir tox && \
 # COPY setup.cfg setup.py tox.ini ./
 # COPY moonbeam_cli/__about__.py moonbeam_cli/__about__.py
 
+COPY tox.ini ./
+
 RUN tox -e py36 --notest
 
 ENV PATH="/home/${NON_ROOT_USER}/.local/bin:${PATH}"
