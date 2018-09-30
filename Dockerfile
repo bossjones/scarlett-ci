@@ -91,7 +91,7 @@ ENV CI true
 # --------------------------------------------------
 ENV PYTHONUNBUFFERED=1
 
-RUN env PYENV_ROOT=/opt/.pyenv; PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}" PYTHON_CONFIGURE_OPTS="--enable-shared" bash -c "curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash && \
+RUN export PYENV_ROOT=/opt/.pyenv; export PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}" export PYTHON_CONFIGURE_OPTS="--enable-shared" bash -c "curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash && \
     git clone https://github.com/jawshooah/pyenv-default-packages ${PYENV_ROOT}/plugins/pyenv-default-packages && \
     find ${PYENV_ROOT} -name \"*.tmp\" -exec rm {} \; && \
     find ${PYENV_ROOT} -type d -name \".git\" -prune -exec rm -rf {} \;"
