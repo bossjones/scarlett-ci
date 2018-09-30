@@ -1,0 +1,19 @@
+image: scarlettos/scarlett-ci:docker
+manifests:
+  -
+    image: scarlettos/scarlett-ci:amd64-docker
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: scarlettos/scarlett-ci:armhf-docker
+    platform:
+      architecture: arm
+      variant: v7
+      os: linux
+  -
+    image: scarlettos/scarlett-ci:aarch64-docker
+    platform:
+      architecture: arm64
+      variant: v8
+      os: linux

@@ -1,0 +1,112 @@
+language: python
+python:
+#   - '2.7'
+#   - '3.4'
+  - '3.6'
+
+sudo:
+  - required
+services:
+  - docker
+install: skip
+script:
+  # prepare dependencies
+  - pip install -r requirements.txt
+  - pip install -r docker-requirements.txt
+  - pip install coveralls
+  # prepare reporter
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+#   # python tests
+#   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
+#   # coverage reports
+#   - coveralls
+#   - python -m coverage report -m
+#   - python -m coverage xml
+#   - |
+#     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
+#       coveralls || exit 0
+#       ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT || exit 0
+#     fi
+
+jobs:
+  include:
+    - &integration-stage
+      stage: integration
+      script:
+        # - pip install -r requirements.txt
+        - pip install -r docker-requirements.txt
+        # - PYTHONPATH=tests python -m unittest discover -s tests -v -p it_*.py
+      env:    DIND_VERSION=18.02
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.12
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.09
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=17.06
+
+    - <<: *integration-stage
+      env:    DIND_VERSION=1.13
+
+    - &deploy-stage
+      stage: deploy
+      if: branch = master AND type = push
+      script:
+        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+        - |
+          docker build -t scarlett-ci:$DOCKER_TAG   \
+            --build-arg BASE_IMAGE=$BASE_IMAGE        \
+            --build-arg GIT_COMMIT=$TRAVIS_COMMIT     \
+            --build-arg BUILD_TIMESTAMP=$(date +%s)   \
+            -f Dockerfile${FLAVOR}                    \
+            .
+        - docker tag scarlett-ci:$DOCKER_TAG scarlettos/scarlett-ci:$DOCKER_TAG
+        - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
+      after_success:
+        - docker push scarlettos/scarlett-ci:$DOCKER_TAG
+      env:
+        - DOCKER_TAG=amd64
+        # - BASE_IMAGE=alpine
+        - BASE_IMAGE=ubuntu
+
+    # - <<: *deploy-stage
+    #   env:
+    #     - DOCKER_TAG=armhf
+    #     - BASE_IMAGE=bossjones/armhf-alpine-qemu
+
+    - <<: *deploy-stage
+      env:
+        - DOCKER_TAG=aarch64
+        - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
+
+    - <<: *deploy-stage
+      env:
+        - FLAVOR=-docker
+        - DOCKER_TAG=amd64-docker
+        - BASE_IMAGE=ubuntu
+
+    # - <<: *deploy-stage
+    #   env:
+    #     - FLAVOR=-docker
+    #     - DOCKER_TAG=armhf-docker
+    #     - BASE_IMAGE=bossjones/armhf-alpine-qemu
+
+    - <<: *deploy-stage
+      env:
+        - FLAVOR=-docker
+        - DOCKER_TAG=aarch64-docker
+        - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
+
+    - stage: manifest
+      if: branch = master AND type = push
+      script:
+        - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
+        - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64 > ./manifest-tool
+        - chmod +x ./manifest-tool
+        - ./manifest-tool push from-spec manifest.yml
+        - ./manifest-tool push from-spec manifest-docker.yml
+
