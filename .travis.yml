@@ -1,112 +1,88 @@
 language: python
 python:
-#   - '2.7'
-#   - '3.4'
-  - '3.6'
-
+- '3.6'
 sudo:
-  - required
+- required
 services:
-  - docker
+- docker
 install: skip
 script:
-  # prepare dependencies
-  - pip install -r requirements.txt
-  - pip install -r docker-requirements.txt
-  - pip install coveralls
-  # prepare reporter
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
-#   # python tests
-#   - PYTHONPATH=src python -m coverage run --branch --source=src -m unittest discover -s tests -v
-#   # coverage reports
-#   - coveralls
-#   - python -m coverage report -m
-#   - python -m coverage xml
-#   - |
-#     if [[ "$(python --version 2>&1)" = *2.7* ]]; then
-#       coveralls || exit 0
-#       ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT || exit 0
-#     fi
-
+- pip install -r requirements.txt
+- pip install -r docker-requirements.txt
+- pip install coveralls
+- curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64
+  > ./cc-test-reporter
+- chmod +x ./cc-test-reporter
+- "./cc-test-reporter before-build"
 jobs:
   include:
-    - &integration-stage
-      stage: integration
-      script:
-        # - pip install -r requirements.txt
-        - pip install -r docker-requirements.txt
-        # - PYTHONPATH=tests python -m unittest discover -s tests -v -p it_*.py
-      env:    DIND_VERSION=18.02
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=17.12
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=17.09
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=17.06
-
-    - <<: *integration-stage
-      env:    DIND_VERSION=1.13
-
-    - &deploy-stage
-      stage: deploy
-      if: branch = master AND type = push
-      script:
-        - docker run --rm --privileged multiarch/qemu-user-static:register --reset
-        - |
-          docker build -t scarlett-ci:$DOCKER_TAG   \
-            --build-arg BASE_IMAGE=$BASE_IMAGE        \
-            --build-arg GIT_COMMIT=$TRAVIS_COMMIT     \
-            --build-arg BUILD_TIMESTAMP=$(date +%s)   \
-            -f Dockerfile${FLAVOR}                    \
-            .
-        - docker tag scarlett-ci:$DOCKER_TAG scarlettos/scarlett-ci:$DOCKER_TAG
-        - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
-      after_success:
-        - docker push scarlettos/scarlett-ci:$DOCKER_TAG
-      env:
-        - DOCKER_TAG=amd64
-        # - BASE_IMAGE=alpine
-        - BASE_IMAGE=ubuntu
-
-    # - <<: *deploy-stage
-    #   env:
-    #     - DOCKER_TAG=armhf
-    #     - BASE_IMAGE=bossjones/armhf-alpine-qemu
-
-    - <<: *deploy-stage
-      env:
-        - DOCKER_TAG=aarch64
-        - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
-
-    - <<: *deploy-stage
-      env:
-        - FLAVOR=-docker
-        - DOCKER_TAG=amd64-docker
-        - BASE_IMAGE=ubuntu
-
-    # - <<: *deploy-stage
-    #   env:
-    #     - FLAVOR=-docker
-    #     - DOCKER_TAG=armhf-docker
-    #     - BASE_IMAGE=bossjones/armhf-alpine-qemu
-
-    - <<: *deploy-stage
-      env:
-        - FLAVOR=-docker
-        - DOCKER_TAG=aarch64-docker
-        - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
-
-    - stage: manifest
-      if: branch = master AND type = push
-      script:
-        - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
-        - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64 > ./manifest-tool
-        - chmod +x ./manifest-tool
-        - ./manifest-tool push from-spec manifest.yml
-        - ./manifest-tool push from-spec manifest-docker.yml
-
+  - stage: integration
+    script: &1
+    - pip install -r docker-requirements.txt
+    env: DIND_VERSION=18.02
+  - stage: integration
+    script: *1
+    env: DIND_VERSION=17.12
+  - stage: integration
+    script: *1
+    env: DIND_VERSION=17.09
+  - stage: integration
+    script: *1
+    env: DIND_VERSION=17.06
+  - stage: integration
+    script: *1
+    env: DIND_VERSION=1.13
+  - stage: deploy
+    if: branch = master AND type = push
+    script: &2
+    - docker run --rm --privileged multiarch/qemu-user-static:register --reset
+    - |
+      docker build -t scarlett-ci:$DOCKER_TAG   \
+        --build-arg BASE_IMAGE=$BASE_IMAGE        \
+        --build-arg GIT_COMMIT=$TRAVIS_COMMIT     \
+        --build-arg BUILD_TIMESTAMP=$(date +%s)   \
+        -f Dockerfile${FLAVOR}                    \
+        .
+    - docker tag scarlett-ci:$DOCKER_TAG scarlettos/scarlett-ci:$DOCKER_TAG
+    - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
+    after_success: &3
+    - docker push scarlettos/scarlett-ci:$DOCKER_TAG
+    env:
+    - DOCKER_TAG=amd64
+    - BASE_IMAGE=ubuntu
+  - stage: deploy
+    if: branch = master AND type = push
+    script: *2
+    after_success: *3
+    env:
+    - DOCKER_TAG=aarch64
+    - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
+  - stage: deploy
+    if: branch = master AND type = push
+    script: *2
+    after_success: *3
+    env:
+    - FLAVOR=-docker
+    - DOCKER_TAG=amd64-docker
+    - BASE_IMAGE=ubuntu
+  - stage: deploy
+    if: branch = master AND type = push
+    script: *2
+    after_success: *3
+    env:
+    - FLAVOR=-docker
+    - DOCKER_TAG=aarch64-docker
+    - BASE_IMAGE=bossjones/arm64v8-ubuntu-qemu
+  - stage: manifest
+    if: branch = master AND type = push
+    script:
+    - echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
+    - curl -fsSL https://github.com/estesp/manifest-tool/releases/download/v0.7.0/manifest-tool-linux-amd64
+      > ./manifest-tool
+    - chmod +x ./manifest-tool
+    - "./manifest-tool push from-spec manifest.yml"
+    - "./manifest-tool push from-spec manifest-docker.yml"
+env:
+  global:
+  - secure: e4ZJsbpdwNgX9yJm6BKHl7jeJjks04PibF/ekDwXarPlIuWcp5Hm1d5kI7kNz/kaDw78/mzYcMrcn6QQmFfnaXibJ+7lmJMwV0AR+uCQzganGP6X40UosSz63LXrKWVoZKO8gnf56dJwLgrRd3BYRS3SN2badg10rGTY/3WhkOg5CMH25DsoD6yPn4jyswkEXRAQAepz/Lg1ovK+TE4PmYipZ+WUARUqmMSjTuifc3rJ4zohWtVRceNNDj/WFMKCM/pX3k8fbcUweI8FguDUkkH3+D4FkDIPa9wEqUm6BxN9EWevm178WJbe25va85JTcsFtM7pqW2BCW6OcGXT6fqfZFf6iVyMQSy812xMKYTGGbBhzupLd+0wivRoy1FK3/qZVHAi1fe4/XG01neo1Aec8P7YcJw+LdJvD6bYYhQwX1yi1LhEzaey8RLoA/aY1fYSSkPgSifXPbLHLucMz5mqYWG8+kYwbYg/CMqyg5AbGCq8sd9vZ0nB0AMY/o+QBHoMqXPBcJKcd64kWeSAklTlfZEbmJwytRt46QrrmwgF7DsH1HTq2fZWOVb4GKGFnOu+m38Scv9GmpWC/SbcZXDa1tWacwzMYHJ4b/xvdDe8+D4eRuzI84zC8HrageYUIR7yMW5b8xFezX2SzqzTe3nnq9N6TdmGiQNvsTQMNjvA=
+  - secure: AZ5P0puenH+Y0Qu7aDZ4WG7CF+p0EZrXYk2J8uHxx9yqYLj+RkdwQQuEmeRgxUvOBWj6QBMoHbB/qTWVKxd0LXx/gjrkVGpAXcB4hfSZWOuglU8nFk8NCWbDXTYkQDYGbmlJFbcA1zgTd0JCzVQjqKU+Eg4aT5xMLt1unaGs5NxCdC8ZnZXwt5etMfAR63UleD8pFE6KEINxDIuCVfeMJjYNczvwCB4GU1r22XeBxoH/W+WylqpdV4nVOReuy3udvbZxhWLsxUTG4NNSFQKDFw4zQzpKpaLcSJjrJHEu6lZEf/cP5CJ74AC9xVu+kymunfXl/R/vHFOr78Udx3UH9IA9HGLPwP0XtFmyNwaFH+5kG1zmXbTnM1nFuJFPxdSHfVOOYxgbsgFTe6zKaRQMryy+HtnjtvJL8XXxjE1sJ0r9RYDI0JfuxD1S/53d19DUNrqIl31GfuOSUSyLDEWSgC1kp9GKyE5ABlweyH44iW0RIDS/7q/s0gTuMrNYD1hnMye0cY6YdMzcCrboNPMQn/0H+6bU3+m5NCmH42E6g2M7G7LmF3br20JT6d5VCdJrrANA83JKgThTSzXsTjaCtlP0FDAWkF0V5CnhNa3Jw8yEhRD2ehEMlohFT5I3QAOQPu20736Ko4UufI54lJZ9OT/XIhEfD6wQJdSdR/24gX8=
