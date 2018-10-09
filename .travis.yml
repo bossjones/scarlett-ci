@@ -44,7 +44,7 @@ jobs:
         -f Dockerfile${FLAVOR}                    \
         .
     - docker tag scarlett-ci:$DOCKER_TAG scarlettos/scarlett-ci:$DOCKER_TAG
-    - echo ${DOCKER_PASSWORD} | docker login --username "jarvis" --password-stdin
+    - echo ${DOCKER_PASSWORD} | docker login --username ${DOCKER_USERNAME} --password-stdin
     after_success: &3
     - docker push scarlettos/scarlett-ci:$DOCKER_TAG
     env:
